@@ -1,5 +1,5 @@
--- Spanish translations
--- This migration adds Spanish language translations
+-- ES translations
+-- This migration adds ES language translations
 
 INSERT INTO translations (language_code, translation_key, translation_value) VALUES
 ('es', 'auth.email', 'Correo electrónico'),
@@ -32,6 +32,7 @@ INSERT INTO translations (language_code, translation_key, translation_value) VAL
 ('es', 'clients.never', 'Nunca'),
 ('es', 'clients.never_expires', 'Nunca vence'),
 ('es', 'clients.no_clients', 'Aún no hay clientes'),
+('es', 'clients.overlimit', 'Límite excedido'),
 ('es', 'clients.qr_code', 'Código QR'),
 ('es', 'clients.received', 'Recibido'),
 ('es', 'clients.restore', 'Restaurar'),
@@ -43,6 +44,8 @@ INSERT INTO translations (language_code, translation_key, translation_value) VAL
 ('es', 'clients.sync_stats', 'Sincronizar estadísticas'),
 ('es', 'clients.title', 'Clientes'),
 ('es', 'clients.traffic', 'Tráfico'),
+('es', 'clients.traffic_limit', 'Límite de tráfico'),
+('es', 'clients.unlimited', 'Ilimitado'),
 ('es', 'common.days', 'días'),
 ('es', 'dashboard.active_clients', 'Clientes activos'),
 ('es', 'dashboard.add_first_server', 'Agregar primer servidor'),

@@ -396,6 +396,7 @@ Router::post('/servers/{id}/clients/create', function ($params) {
     $serverId = (int)$params['id'];
     $clientName = trim($_POST['name'] ?? '');
     $expiresInDays = !empty($_POST['expires_in_days']) ? (int)$_POST['expires_in_days'] : null;
+    $trafficLimitGb = !empty($_POST['traffic_limit_gb']) ? (float)$_POST['traffic_limit_gb'] : null;
     
     if (empty($clientName)) {
         redirect('/servers/' . $serverId . '?error=Client+name+is+required');
@@ -415,6 +416,14 @@ Router::post('/servers/{id}/clients/create', function ($params) {
         }
         
         $clientId = VpnClient::create($serverId, $user['id'], $clientName, $expiresInDays);
+        
+        // Set traffic limit if specified
+        if ($trafficLimitGb !== null) {
+            $client = new VpnClient($clientId);
+            $limitBytes = (int)($trafficLimitGb * 1073741824); // Convert GB to bytes
+            $client->setTrafficLimit($limitBytes);
+        }
+        
         redirect('/clients/' . $clientId);
     } catch (Exception $e) {
         redirect('/servers/' . $serverId . '?error=' . urlencode($e->getMessage()));
@@ -1303,6 +1312,110 @@ Router::get('/api/clients/expiring', function () {
     
     try {
         $clients = VpnClient::getExpiringClients($days);
+        
+        // Filter by user if not admin
+        if ($user['role'] !== 'admin') {
+            $clients = array_filter($clients, function($c) use ($user) {
+                return $c['user_id'] == $user['id'];
+            });
+        }
+        
+        echo json_encode([
+            'success' => true,
+            'clients' => array_values($clients),
+            'count' => count($clients)
+        ]);
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode(['error' => $e->getMessage()]);
+    }
+});
+
+// Set client traffic limit
+Router::post('/api/clients/{id}/set-traffic-limit', function ($params) {
+    header('Content-Type: application/json');
+    
+    $user = JWT::requireAuth();
+    if (!$user) return;
+    
+    $clientId = (int)$params['id'];
+    $raw = file_get_contents('php://input');
+    $data = json_decode($raw, true);
+    
+    // limit_bytes can be null (unlimited) or positive integer
+    $limitBytes = isset($data['limit_bytes']) ? (int)$data['limit_bytes'] : null;
+    
+    if ($limitBytes !== null && $limitBytes < 0) {
+        http_response_code(400);
+        echo json_encode(['error' => 'limit_bytes must be positive or null for unlimited']);
+        return;
+    }
+    
+    try {
+        $client = new VpnClient($clientId);
+        $clientData = $client->getData();
+        
+        // Check ownership
+        if ($clientData['user_id'] != $user['id'] && $user['role'] !== 'admin') {
+            http_response_code(403);
+            echo json_encode(['error' => 'Forbidden']);
+            return;
+        }
+        
+        $client->setTrafficLimit($limitBytes);
+        
+        echo json_encode([
+            'success' => true,
+            'limit_bytes' => $limitBytes,
+            'limit_gb' => $limitBytes ? round($limitBytes / 1073741824, 2) : null
+        ]);
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode(['error' => $e->getMessage()]);
+    }
+});
+
+// Check client traffic limit status
+Router::get('/api/clients/{id}/traffic-limit-status', function ($params) {
+    header('Content-Type: application/json');
+    
+    $user = JWT::requireAuth();
+    if (!$user) return;
+    
+    $clientId = (int)$params['id'];
+    
+    try {
+        $client = new VpnClient($clientId);
+        $clientData = $client->getData();
+        
+        // Check ownership
+        if ($clientData['user_id'] != $user['id'] && $user['role'] !== 'admin') {
+            http_response_code(403);
+            echo json_encode(['error' => 'Forbidden']);
+            return;
+        }
+        
+        $status = $client->getTrafficLimitStatus();
+        
+        echo json_encode([
+            'success' => true,
+            'status' => $status
+        ]);
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode(['error' => $e->getMessage()]);
+    }
+});
+
+// Get clients over traffic limit
+Router::get('/api/clients/overlimit', function () {
+    header('Content-Type: application/json');
+    
+    $user = JWT::requireAuth();
+    if (!$user) return;
+    
+    try {
+        $clients = VpnClient::getClientsOverLimit();
         
         // Filter by user if not admin
         if ($user['role'] !== 'admin') {

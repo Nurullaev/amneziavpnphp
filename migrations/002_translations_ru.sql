@@ -1,5 +1,5 @@
--- Russian translations
--- This migration adds Russian language translations
+-- RU translations
+-- This migration adds RU language translations
 
 INSERT INTO translations (language_code, translation_key, translation_value) VALUES
 ('ru', 'auth.email', 'Email'),
@@ -32,6 +32,7 @@ INSERT INTO translations (language_code, translation_key, translation_value) VAL
 ('ru', 'clients.never', 'Никогда'),
 ('ru', 'clients.never_expires', 'Бессрочно'),
 ('ru', 'clients.no_clients', 'Пока нет клиентов'),
+('ru', 'clients.overlimit', 'Превышен лимит'),
 ('ru', 'clients.qr_code', 'QR-код'),
 ('ru', 'clients.received', 'Получено'),
 ('ru', 'clients.restore', 'Восстановить'),
@@ -43,6 +44,8 @@ INSERT INTO translations (language_code, translation_key, translation_value) VAL
 ('ru', 'clients.sync_stats', 'Синхронизировать статистику'),
 ('ru', 'clients.title', 'Клиенты'),
 ('ru', 'clients.traffic', 'Трафик'),
+('ru', 'clients.traffic_limit', 'Лимит трафика'),
+('ru', 'clients.unlimited', 'Безлимитно'),
 ('ru', 'common.days', 'дней'),
 ('ru', 'dashboard.active_clients', 'Активные клиенты'),
 ('ru', 'dashboard.add_first_server', 'Добавить первый сервер'),

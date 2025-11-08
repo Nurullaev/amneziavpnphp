@@ -1,5 +1,5 @@
--- Chinese translations
--- This migration adds Chinese language translations
+-- ZH translations
+-- This migration adds ZH language translations
 
 INSERT INTO translations (language_code, translation_key, translation_value) VALUES
 ('zh', 'auth.email', '邮箱'),
@@ -32,6 +32,7 @@ INSERT INTO translations (language_code, translation_key, translation_value) VAL
 ('zh', 'clients.never', '从不'),
 ('zh', 'clients.never_expires', '永不过期'),
 ('zh', 'clients.no_clients', '还没有客户'),
+('zh', 'clients.overlimit', '超出限制'),
 ('zh', 'clients.qr_code', '二维码'),
 ('zh', 'clients.received', '已接收'),
 ('zh', 'clients.restore', '恢复'),
@@ -43,6 +44,8 @@ INSERT INTO translations (language_code, translation_key, translation_value) VAL
 ('zh', 'clients.sync_stats', '同步统计'),
 ('zh', 'clients.title', '客户端'),
 ('zh', 'clients.traffic', '流量'),
+('zh', 'clients.traffic_limit', '流量限制'),
+('zh', 'clients.unlimited', '无限制'),
 ('zh', 'common.days', '天'),
 ('zh', 'dashboard.active_clients', '活跃客户端'),
 ('zh', 'dashboard.add_first_server', '添加第一个服务器'),

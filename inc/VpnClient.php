@@ -825,5 +825,117 @@ class VpnClient {
         $diff = strtotime($this->data['expires_at']) - time();
         return (int)floor($diff / 86400);
     }
+    
+    /**
+     * Set traffic limit for client
+     * 
+     * @param int|null $limitBytes Traffic limit in bytes (NULL = unlimited)
+     * @return bool Success
+     */
+    public function setTrafficLimit(?int $limitBytes): bool {
+        if (!$this->data) {
+            throw new Exception('Client not loaded');
+        }
+        
+        $pdo = DB::conn();
+        $stmt = $pdo->prepare('UPDATE vpn_clients SET traffic_limit = ? WHERE id = ?');
+        $result = $stmt->execute([$limitBytes, $this->clientId]);
+        
+        if ($result) {
+            $this->data['traffic_limit'] = $limitBytes;
+        }
+        
+        return $result;
+    }
+    
+    /**
+     * Get total traffic used (sent + received)
+     * 
+     * @return int Total traffic in bytes
+     */
+    public function getTotalTraffic(): int {
+        if (!$this->data) {
+            return 0;
+        }
+        
+        return (int)($this->data['traffic_sent'] ?? 0) + (int)($this->data['traffic_received'] ?? 0);
+    }
+    
+    /**
+     * Check if client has exceeded traffic limit
+     * 
+     * @return bool True if over limit
+     */
+    public function isOverLimit(): bool {
+        if (!$this->data || $this->data['traffic_limit'] === null) {
+            return false; // No limit set
+        }
+        
+        $totalTraffic = $this->getTotalTraffic();
+        return $totalTraffic >= (int)$this->data['traffic_limit'];
+    }
+    
+    /**
+     * Get traffic limit status
+     * 
+     * @return array Status info
+     */
+    public function getTrafficLimitStatus(): array {
+        $totalTraffic = $this->getTotalTraffic();
+        $limit = $this->data['traffic_limit'] ?? null;
+        
+        return [
+            'total_traffic' => $totalTraffic,
+            'traffic_limit' => $limit,
+            'is_unlimited' => $limit === null,
+            'is_over_limit' => $this->isOverLimit(),
+            'percentage_used' => $limit ? min(100, round(($totalTraffic / $limit) * 100, 2)) : 0,
+            'remaining' => $limit ? max(0, $limit - $totalTraffic) : null
+        ];
+    }
+    
+    /**
+     * Get all clients that exceeded their traffic limit
+     * 
+     * @return array List of client IDs over limit
+     */
+    public static function getClientsOverLimit(): array {
+        $pdo = DB::conn();
+        $stmt = $pdo->query('
+            SELECT id, name, traffic_sent, traffic_received, traffic_limit 
+            FROM vpn_clients 
+            WHERE traffic_limit IS NOT NULL 
+            AND (traffic_sent + traffic_received) >= traffic_limit 
+            AND status = "active"
+            ORDER BY id
+        ');
+        
+        return $stmt->fetchAll();
+    }
+    
+    /**
+     * Disable all clients that exceeded their traffic limit
+     * 
+     * @return int Number of clients disabled
+     */
+    public static function disableClientsOverLimit(): int {
+        $clients = self::getClientsOverLimit();
+        $disabled = 0;
+        
+        foreach ($clients as $clientData) {
+            try {
+                $client = new VpnClient($clientData['id']);
+                if ($client->revoke()) {
+                    $disabled++;
+                    error_log("Client {$clientData['name']} (ID: {$clientData['id']}) disabled: traffic limit exceeded");
+                }
+            } catch (Exception $e) {
+                error_log("Failed to disable client {$clientData['id']}: " . $e->getMessage());
+            }
+        }
+        
+        return $disabled;
+    }
 }
+
 

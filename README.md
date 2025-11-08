@@ -6,13 +6,14 @@ Web-based management panel for Amnezia AWG (WireGuard) VPN servers.
 
 - VPN server deployment via SSH
 - Client configuration management with **expiration dates**
+- **Traffic limits** for clients with automatic enforcement
 - **Server backup and restore** functionality
 - Traffic statistics monitoring
 - QR code generation for mobile apps
 - Multi-language interface (English, Russian, Spanish, German, French, Chinese)
 - REST API with JWT authentication
 - User authentication and access control
-- **Automatic client expiration check** via cron
+- **Automatic client expiration and traffic limit checks** via cron
 
 ## Requirements
 
@@ -64,8 +65,9 @@ JWT_SECRET=your-secret-key-change-this
 1. Open server details
 2. Enter client name
 3. **Select expiration period** (optional, default: never expires)
-4. Click Create Client
-5. Download config or scan QR code
+4. **Select traffic limit** (optional, default: unlimited)
+5. Click Create Client
+6. Download config or scan QR code
 
 ### Manage Client Expiration
 
@@ -83,6 +85,29 @@ curl -X POST http://localhost:8082/api/clients/123/extend \
 
 # Get expiring clients (within 7 days)
 curl http://localhost:8082/api/clients/expiring?days=7 \
+  -H "Authorization: Bearer <token>"
+```
+
+### Manage Traffic Limits
+
+Set and monitor traffic limits via UI or API:
+```bash
+# Set traffic limit (10 GB = 10737418240 bytes)
+curl -X POST http://localhost:8082/api/clients/123/set-traffic-limit \
+  -H "Authorization: Bearer <token>" \
+  -d '{"limit_bytes": 10737418240}'
+
+# Remove traffic limit (set to unlimited)
+curl -X POST http://localhost:8082/api/clients/123/set-traffic-limit \
+  -H "Authorization: Bearer <token>" \
+  -d '{"limit_bytes": null}'
+
+# Check traffic limit status
+curl http://localhost:8082/api/clients/123/traffic-limit-status \
+  -H "Authorization: Bearer <token>"
+
+# Get clients over traffic limit
+curl http://localhost:8082/api/clients/overlimit \
   -H "Authorization: Bearer <token>"
 ```
 
@@ -116,6 +141,20 @@ docker compose exec web tail -f /var/log/cron.log
 Run manually:
 ```bash
 docker compose exec web php /var/www/html/bin/check_expired_clients.php
+```
+
+### Automatic Traffic Limit Check
+
+**Runs automatically in Docker container** every hour to disable clients that exceeded their traffic limit.
+
+Check cron logs:
+```bash
+docker compose exec web tail -f /var/log/cron.log
+```
+
+Run manually:
+```bash
+docker compose exec web php /var/www/html/bin/check_traffic_limits.php
 ```
 
 ### API Authentication
@@ -167,6 +206,10 @@ POST   /api/clients/{id}/extend     - Extend client expiration
        Parameters: days (int)
 GET    /api/clients/expiring        - Get clients expiring soon
        Parameters: days (default: 7)
+POST   /api/clients/{id}/set-traffic-limit  - Set client traffic limit
+       Parameters: limit_bytes (int or null for unlimited)
+GET    /api/clients/{id}/traffic-limit-status - Get traffic limit status
+GET    /api/clients/overlimit       - Get clients over traffic limit
 ```
 
 ### Backups

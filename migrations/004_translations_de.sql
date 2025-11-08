@@ -1,5 +1,5 @@
--- German translations
--- This migration adds German language translations
+-- DE translations
+-- This migration adds DE language translations
 
 INSERT INTO translations (language_code, translation_key, translation_value) VALUES
 ('de', 'auth.email', 'E-Mail'),
@@ -32,6 +32,7 @@ INSERT INTO translations (language_code, translation_key, translation_value) VAL
 ('de', 'clients.never', 'Niemals'),
 ('de', 'clients.never_expires', 'Läuft nie ab'),
 ('de', 'clients.no_clients', 'Noch keine Kunden'),
+('de', 'clients.overlimit', 'Limit überschritten'),
 ('de', 'clients.qr_code', 'QR-Code'),
 ('de', 'clients.received', 'Empfangen'),
 ('de', 'clients.restore', 'Wiederherstellen'),
@@ -43,6 +44,8 @@ INSERT INTO translations (language_code, translation_key, translation_value) VAL
 ('de', 'clients.sync_stats', 'Statistiken synchronisieren'),
 ('de', 'clients.title', 'Clients'),
 ('de', 'clients.traffic', 'Datenverkehr'),
+('de', 'clients.traffic_limit', 'Traffic-Limit'),
+('de', 'clients.unlimited', 'Unbegrenzt'),
 ('de', 'common.days', 'Tage'),
 ('de', 'dashboard.active_clients', 'Aktive Clients'),
 ('de', 'dashboard.add_first_server', 'Ersten Server hinzufügen'),

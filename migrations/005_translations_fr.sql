@@ -1,5 +1,5 @@
--- French translations
--- This migration adds French language translations
+-- FR translations
+-- This migration adds FR language translations
 
 INSERT INTO translations (language_code, translation_key, translation_value) VALUES
 ('fr', 'auth.email', 'Email'),
@@ -32,6 +32,7 @@ INSERT INTO translations (language_code, translation_key, translation_value) VAL
 ('fr', 'clients.never', 'Jamais'),
 ('fr', 'clients.never_expires', 'N''expire jamais'),
 ('fr', 'clients.no_clients', 'Pas encore de clients'),
+('fr', 'clients.overlimit', 'Limite dépassée'),
 ('fr', 'clients.qr_code', 'Code QR'),
 ('fr', 'clients.received', 'Reçu'),
 ('fr', 'clients.restore', 'Restaurer'),
@@ -43,6 +44,8 @@ INSERT INTO translations (language_code, translation_key, translation_value) VAL
 ('fr', 'clients.sync_stats', 'Synchroniser les statistiques'),
 ('fr', 'clients.title', 'Clients'),
 ('fr', 'clients.traffic', 'Trafic'),
+('fr', 'clients.traffic_limit', 'Limite de trafic'),
+('fr', 'clients.unlimited', 'Illimité'),
 ('fr', 'common.days', 'jours'),
 ('fr', 'dashboard.active_clients', 'Clients actifs'),
 ('fr', 'dashboard.add_first_server', 'Ajouter le premier serveur'),

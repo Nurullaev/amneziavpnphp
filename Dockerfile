@@ -36,8 +36,9 @@ COPY apache.conf /etc/apache2/sites-available/000-default.conf
 RUN chown -R www-data:www-data /var/www/html \
     && chmod -R 755 /var/www/html/public
 
-# Setup cron for client expiration check (runs every hour)
+# Setup cron for client expiration and traffic limit checks (runs every hour)
 RUN echo "0 * * * * www-data cd /var/www/html && /usr/local/bin/php bin/check_expired_clients.php >> /var/log/cron.log 2>&1" > /etc/cron.d/amnezia-cron \
+    && echo "0 * * * * www-data cd /var/www/html && /usr/local/bin/php bin/check_traffic_limits.php >> /var/log/cron.log 2>&1" >> /etc/cron.d/amnezia-cron \
     && chmod 0644 /etc/cron.d/amnezia-cron \
     && crontab /etc/cron.d/amnezia-cron \
     && touch /var/log/cron.log

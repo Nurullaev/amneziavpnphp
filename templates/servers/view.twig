@@ -28,6 +28,21 @@
             <option value="365">365 {{ t('common.days') }}</option>
           </select>
         </div>
+        <div>
+          <label class="block text-sm text-gray-600 mb-1">{{ t('clients.traffic_limit') }}</label>
+          <select name="traffic_limit_gb" class="w-full px-3 py-2 border rounded">
+            <option value="" selected>{{ t('clients.unlimited') }}</option>
+            <option value="1">1 GB</option>
+            <option value="5">5 GB</option>
+            <option value="10">10 GB</option>
+            <option value="25">25 GB</option>
+            <option value="50">50 GB</option>
+            <option value="100">100 GB</option>
+            <option value="250">250 GB</option>
+            <option value="500">500 GB</option>
+            <option value="1000">1000 GB (1 TB)</option>
+          </select>
+        </div>
         <button type="submit" class="gradient-bg text-white px-4 py-2 rounded w-full" id="createClientBtn">
           <span id="createClientText">{{ t('form.create') }}</span>
           <i class="fas fa-spinner fa-spin" id="createClientSpinner" style="display:none;"></i>
@@ -66,6 +81,7 @@
           <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{{ t('clients.status') }}</th>
           <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{{ t('clients.expiration') }}</th>
           <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{{ t('clients.traffic') }}</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{{ t('clients.traffic_limit') }}</th>
           <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{{ t('clients.last_handshake') }}</th>
           <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{{ t('clients.actions') }}</th>
         </tr>
@@ -105,11 +121,33 @@
           </td>
           <td class="px-6 py-4 text-sm">
             <div class="text-gray-600">
-              ↑ {{ (client.bytes_sent|default(0) / 1024 / 1024)|number_format(2) }} MB
+              ↑ {{ (client.traffic_sent|default(0) / 1024 / 1024)|number_format(2) }} MB
             </div>
             <div class="text-gray-600">
-              ↓ {{ (client.bytes_received|default(0) / 1024 / 1024)|number_format(2) }} MB
+              ↓ {{ (client.traffic_received|default(0) / 1024 / 1024)|number_format(2) }} MB
             </div>
+          </td>
+          <td class="px-6 py-4 text-sm">
+            {% if client.traffic_limit %}
+              {% set total_traffic = (client.traffic_sent|default(0) + client.traffic_received|default(0)) %}
+              {% set limit_gb = (client.traffic_limit / 1073741824)|number_format(2) %}
+              {% set used_gb = (total_traffic / 1073741824)|number_format(2) %}
+              {% set percentage = ((total_traffic / client.traffic_limit) * 100)|round %}
+              
+              {% if percentage >= 100 %}
+                <span class="px-2 py-1 bg-red-100 text-red-800 rounded text-xs">
+                  <i class="fas fa-exclamation-circle"></i> {{ t('clients.overlimit') }}
+                </span>
+              {% elseif percentage >= 80 %}
+                <span class="px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-xs">
+                  {{ used_gb }} / {{ limit_gb }} GB ({{ percentage }}%)
+                </span>
+              {% else %}
+                <span class="text-gray-600">{{ used_gb }} / {{ limit_gb }} GB</span>
+              {% endif %}
+            {% else %}
+              <span class="text-gray-400">{{ t('clients.unlimited') }}</span>
+            {% endif %}
           </td>
           <td class="px-6 py-4 text-sm">
             {% if client.last_handshake %}
