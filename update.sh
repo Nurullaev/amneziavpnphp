@@ -13,6 +13,8 @@ echo "  Amnezia VPN Panel - Auto Update v2.0"
 echo "=========================================="
 echo ""
 
+START_TIME=$(date)
+
 # Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -59,6 +61,7 @@ done
 LOG_DIR="logs"
 mkdir -p "$LOG_DIR"
 LOG_FILE="$LOG_DIR/update_$(date +%Y%m%d_%H%M%S).log"
+BACKUP_DIR="backups"
 
 # Logging function
 log() {
@@ -91,7 +94,7 @@ error_exit() {
 # Trap errors
 trap 'error_exit "Script failed at line $LINENO"' ERR
 
-log_info "Update started at $(date)"
+log_info "Update started at $START_TIME"
 log_info "Log file: $LOG_FILE"
 
 # ==========================================
@@ -554,6 +557,27 @@ CREATE TABLE IF NOT EXISTS schema_migrations (
 );
 EOF
     
+    # Detect legacy installs missing baseline migration records
+    LEGACY_BASELINE_CHECK=$($DOCKER_COMPOSE exec -T db mysql -uroot -p"$DB_ROOT_PASS" "$DB_NAME" -sN -e "SELECT COUNT(*) FROM schema_migrations WHERE filename = '010_add_monitoring_translations.sql';" 2>/dev/null || echo "0")
+    if [ "$LEGACY_BASELINE_CHECK" = "0" ]; then
+        HAS_TRANSLATIONS_LOCALE=$($DOCKER_COMPOSE exec -T db mysql -uroot -p"$DB_ROOT_PASS" "$DB_NAME" -sN -e "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'translations' AND COLUMN_NAME = 'locale';" 2>/dev/null || echo "0")
+        HAS_TRANSLATIONS_LANGUAGE_CODE=$($DOCKER_COMPOSE exec -T db mysql -uroot -p"$DB_ROOT_PASS" "$DB_NAME" -sN -e "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'translations' AND COLUMN_NAME = 'language_code';" 2>/dev/null || echo "0")
+        if [ "$HAS_TRANSLATIONS_LOCALE" != "0" ] && [ "$HAS_TRANSLATIONS_LANGUAGE_CODE" = "0" ]; then
+            log_warning "Detected legacy install without migration records. Seeding baseline entries..."
+            $DOCKER_COMPOSE exec -T db mysql -uroot -p"$DB_ROOT_PASS" "$DB_NAME" -e "INSERT IGNORE INTO schema_migrations (filename) VALUES \
+            ('000_create_user.sql'),('001_init.sql'),('002_translations_ru.sql'),('003_translations_es.sql'),('004_translations_de.sql'),('005_translations_fr.sql'),('006_translations_zh.sql'),('007_add_traffic_limit.sql'),('008_add_panel_imports.sql'),('009_add_server_metrics.sql'),('010_add_monitoring_translations.sql');" 2>>"$LOG_FILE" || true
+            $DOCKER_COMPOSE exec -T db mysql -uroot -p"$DB_ROOT_PASS" "$DB_NAME" -e "INSERT IGNORE INTO user_roles (name, display_name, description, permissions) VALUES \
+            ('admin','Administrator','Full access to all features', JSON_ARRAY('*')),\
+            ('manager','Manager','Can manage servers and clients', JSON_ARRAY('servers.view','servers.create','servers.edit','clients.view','clients.create','clients.edit','clients.delete')),\
+            ('viewer','Viewer','Can only view own clients', JSON_ARRAY('clients.view_own','clients.download_own'));" 2>>"$LOG_FILE" || true
+            $DOCKER_COMPOSE exec -T db mysql -uroot -p"$DB_ROOT_PASS" "$DB_NAME" -e "INSERT IGNORE INTO ldap_group_mappings (ldap_group, role_name, description) VALUES \
+            ('vpn-admins','admin','VPN administrators with full access'),\
+            ('vpn-managers','manager','VPN managers who can create and manage clients'),\
+            ('vpn-users','viewer','Regular VPN users with view-only access');" 2>>"$LOG_FILE" || true
+            log_success "Baseline migration entries seeded"
+        fi
+    fi
+
     # Apply each migration
     APPLIED_COUNT=0
     SKIPPED_COUNT=0
@@ -724,7 +748,7 @@ log "${GREEN}✓ Update completed successfully!${NC}"
 log "=========================================="
 log ""
 log_info "Summary:"
-log "  - Start time: $(head -1 "$LOG_FILE" | grep -o '[0-9]\{4\}-.*')"
+log "  - Start time: $START_TIME"
 log "  - End time: $(date)"
 log "  - Log file: $LOG_FILE"
 
@@ -741,13 +765,26 @@ fi
 log ""
 log_info "Access panel: http://localhost:8082"
 log ""
-log_info "To rollback in case of issues:"
-log "  $0 --rollback"
-log "  or manually:"
-log "  1. $DOCKER_COMPOSE down"
-log "  2. cat $BACKUP_DIR/db_backup_$TIMESTAMP.sql | $DOCKER_COMPOSE exec -T db mysql -uroot -p\$DB_ROOT_PASS $DB_NAME"
-log "  3. git reset --hard $CURRENT_COMMIT"
-log "  4. $DOCKER_COMPOSE up -d"
-log ""
+
+if [ $SKIP_BACKUP -eq 0 ]; then
+    log_info "To rollback in case of issues:"
+    log "  $0 --rollback"
+    log "  or manually:"
+    log "  1. $DOCKER_COMPOSE down"
+    log "  2. cat $BACKUP_DIR/db_backup_$TIMESTAMP.sql | $DOCKER_COMPOSE exec -T db mysql -uroot -p\$DB_ROOT_PASS $DB_NAME"
+    log "  3. git reset --hard $CURRENT_COMMIT"
+    log "  4. $DOCKER_COMPOSE up -d"
+    log ""
+else
+    log_warning "Backup was skipped; ensure you have a recent SQL dump before rolling back."
+    log_info "To rollback in case of issues:"
+    log "  $0 --rollback"
+    log "  or manually:"
+    log "  1. $DOCKER_COMPOSE down"
+    log "  2. Restore database from your backup"
+    log "  3. git reset --hard $CURRENT_COMMIT"
+    log "  4. $DOCKER_COMPOSE up -d"
+    log ""
+fi
 
 log_success "Update completed at $(date)"
